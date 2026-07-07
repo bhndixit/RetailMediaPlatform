@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!--
+      Demo composite host. Runs all services in a single process so the end-to-end
+      event flow can be demonstrated without external infrastructure.
+      Not representative of the production deployment model.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\RetailMedia.Core\RetailMedia.Core.csproj" />
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\RetailMedia.Messaging\RetailMedia.Messaging.csproj" />
+    <ProjectReference Include="..\..\..\src\BuildingBlocks\RetailMedia.Web\RetailMedia.Web.csproj" />
+    <ProjectReference Include="..\..\..\src\Infrastructure\RetailMedia.Infrastructure\RetailMedia.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\RetailMedia.Collector\RetailMedia.Collector.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\RetailMedia.Insights\RetailMedia.Insights.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\RetailMedia.Processor\RetailMedia.Processor.csproj" />
+    <ProjectReference Include="..\..\..\src\Services\RetailMedia.Aggregator\RetailMedia.Aggregator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication" Version="2.2.0" />
+  </ItemGroup>
+</Project>
