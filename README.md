@@ -15,9 +15,9 @@ A demonstration codebase that shows how the platform is organised, how services 
 ```
 RetailMediaPlatform.sln
 
-docs/
-  ArchitectureProposal.docx         ← Architecture design document
-  EventVersioningConvention.md      ← Event schema versioning strategy
+Doc/
+  CaseStudy_Document.docx           ← Architecture design document
+  Case Interview Study.docx         ← Original case study assignment brief
 
 src/
   BuildingBlocks/

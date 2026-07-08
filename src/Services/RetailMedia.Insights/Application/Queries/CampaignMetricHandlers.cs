@@ -14,7 +14,7 @@ internal sealed class GetCampaignClicksHandler(IAnalyticsStore analyticsStore, I
         var metrics = await cache.GetOrFetchAsync<CampaignMetricsSnapshot>(
             cacheKey,
             ct => analyticsStore.GetAsync(query.TenantId, query.CampaignId, ct),
-            ttl: TimeSpan.FromSeconds(30),
+            ttl: TimeSpan.FromSeconds(120),
             cancellationToken);
 
         return metrics is null
@@ -34,7 +34,7 @@ internal sealed class GetCampaignImpressionsHandler(IAnalyticsStore analyticsSto
         var metrics = await cache.GetOrFetchAsync<CampaignMetricsSnapshot>(
             cacheKey,
             ct => analyticsStore.GetAsync(query.TenantId, query.CampaignId, ct),
-            ttl: TimeSpan.FromSeconds(30),
+            ttl: TimeSpan.FromSeconds(120),
             cancellationToken);
 
         return metrics is null
@@ -54,7 +54,7 @@ internal sealed class GetClickToBasketRatioHandler(IAnalyticsStore analyticsStor
         var metrics = await cache.GetOrFetchAsync<CampaignMetricsSnapshot>(
             cacheKey,
             ct => analyticsStore.GetAsync(query.TenantId, query.CampaignId, ct),
-            ttl: TimeSpan.FromSeconds(30),
+            ttl: TimeSpan.FromSeconds(120),
             cancellationToken);
 
         return metrics is null
