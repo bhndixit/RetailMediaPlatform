@@ -2,7 +2,6 @@ using RetailMedia.Aggregator.Handlers;
 using RetailMedia.Infrastructure.Extensions;
 using RetailMedia.Messaging.Abstractions;
 using RetailMedia.Messaging.Events;
-using RetailMedia.Web.Options;
 using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -14,8 +13,6 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 builder.Services.AddSerilog();
-
-builder.Services.Configure<MessagingOptions>(builder.Configuration.GetSection(MessagingOptions.Section));
 
 builder.Services.AddInfrastructure();
 builder.Services.AddSingleton<CampaignMetricsAggregationHandler>();

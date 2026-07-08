@@ -11,6 +11,7 @@ public sealed record CampaignMetricsSnapshot(
     string TenantId,
     long Clicks,
     long Impressions,
+    long Baskets,
     decimal ClickToBasketRatio,
     DateTime LastUpdated
 );

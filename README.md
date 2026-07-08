@@ -17,7 +17,7 @@ RetailMediaPlatform.sln
 
 Doc/
   CaseStudy_Document.docx           ← Architecture design document
-  Case Interview Study.docx         ← Original case study assignment brief
+  Case Study.docx                   ← Original case study assignment brief
 
 src/
   BuildingBlocks/
@@ -117,14 +117,14 @@ The console window shows the full processing chain:
 [INF] Publishing CustomerEventRecorded
 [INF] Processing event for campaign campaign-001
 [INF] Aggregating metrics | EventType: click | Tenant: tenant-alpha
-[INF] Metrics updated: Clicks=1, Impressions=0
+[INF] Metrics updated: Clicks=1, Impressions=0, Baskets=0
 ```
 
 ---
 
 ### Step 2 — Query the metric
 
-1. Expand **`GET /api/v1/campaigns/{campaignId}/clicks`**
+1. Expand **`GET /api/v1/ad/{campaignId}/clicks`**
 2. Click **Try it out**
 3. Select `X-Tenant-Id: tenant-alpha`
 4. Set `campaignId` to `campaign-001`
@@ -136,7 +136,7 @@ The console window shows the full processing chain:
   "campaignId": "campaign-001",
   "tenantId": "tenant-alpha",
   "clicks": 1,
-  "asOf": "2026-07-07T06:15:00Z"
+  "asOf": "2026-07-08T10:00:00Z"
 }
 ```
 
@@ -150,20 +150,22 @@ Send separate POST requests with different `eventType` values, then query each e
 
 | eventType | Query endpoint | Shows |
 |---|---|---|
-| `click` | `/api/v1/campaigns/{id}/clicks` | Click count |
-| `impression` | `/api/v1/campaigns/{id}/impressions` | Impression count |
-| `basket` | `/api/v1/campaigns/{id}/clickToBasket` | Ratio (clicks ÷ impressions) |
+| `click` | `GET /api/v1/ad/{id}/clicks` | Number of ad clicks |
+| `impression` | `GET /api/v1/ad/{id}/impressions` | Number of ad views |
+| `basket` | `GET /api/v1/ad/{id}/clickToBasket` | Basket conversion ratio (baskets ÷ clicks) |
 
-**Example — after 2 clicks and 4 impressions:**
+**Example — after 4 clicks and 2 basket events:**
 
 ```json
 {
   "campaignId": "campaign-001",
   "tenantId": "tenant-alpha",
   "ratio": 0.5,
-  "asOf": "2026-07-07T06:15:00Z"
+  "asOf": "2026-07-08T10:00:00Z"
 }
 ```
+
+A ratio of `0.5` means 50% of users who clicked also added a product to their basket.
 
 ---
 
@@ -173,7 +175,7 @@ This demonstrates the core multi-tenancy guarantee.
 
 1. Send 3 click events with `X-Tenant-Id: tenant-alpha`, `campaignId: campaign-001`
 2. Send 1 click event with `X-Tenant-Id: tenant-beta`, `campaignId: campaign-001`
-3. Query `/api/v1/campaigns/campaign-001/clicks` with `tenant-alpha` → `clicks: 3`
+3. Query `GET /api/v1/ad/campaign-001/clicks` with `tenant-alpha` → `clicks: 3`
 4. Query the same endpoint with `tenant-beta` → `clicks: 1`
 
 Same campaign ID, completely isolated data per tenant.
@@ -224,6 +226,15 @@ Open these URLs directly in the browser while the Demo is running:
 | Event types | `click`, `impression`, `basket` |
 | Demo URL | `http://localhost:5100` |
 
+### Insights API endpoints
+
+| Endpoint | Description |
+|---|---|
+| `POST /api/v1/events` | Record a customer interaction event |
+| `GET /api/v1/ad/{campaignId}/clicks` | Number of ad clicks for a campaign |
+| `GET /api/v1/ad/{campaignId}/impressions` | Number of ad impressions for a campaign |
+| `GET /api/v1/ad/{campaignId}/clickToBasket` | Basket conversion ratio for a campaign |
+
 ### Infrastructure swap table
 
 | Demo (current) | Production replacement | Change required |
@@ -245,6 +256,6 @@ No business logic changes are required when moving to production infrastructure.
 | Clean Architecture | `Domain/` has zero external NuGet references; infrastructure implements interfaces it never defines |
 | CQRS | `Commands/` and `Queries/` are separate folders in every service; handlers never mix read and write |
 | Multi-tenancy | `TenantMiddleware` resolves tenant once per request; every handler receives it via `TenantContext` |
-| Event-driven | `Collector` publishes, `Processor` and `Aggregator` subscribe; no direct service references |
+| Event-driven | `Collector` publishes, `Processor` and `Aggregator` subscribe; no direct service-to-service references |
 | Observability | Every log line carries `TenantId` and `CorrelationId`; `/health/live` and `/health/ready` on every service |
-| Resilience interfaces | `IDeadLetterQueue`, `IRetryPolicy`, `ICacheProvider.GetOrFetchAsync` represent production resilience patterns |
+| Resilience interfaces | `IDeadLetterQueue`, `IRetryPolicy`, `ICacheProvider.GetOrFetchAsync` signal production resilience patterns |

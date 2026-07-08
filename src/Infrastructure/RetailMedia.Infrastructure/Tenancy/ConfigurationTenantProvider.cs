@@ -19,8 +19,7 @@ internal sealed class ConfigurationTenantProvider(IOptions<TenantOptions> option
         var context = new TenantContext
         {
             TenantId = entry.TenantId,
-            TenantName = entry.TenantName,
-            CorrelationId = Guid.NewGuid()
+            TenantName = entry.TenantName
         };
 
         return Task.FromResult<TenantContext?>(context);

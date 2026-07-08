@@ -7,6 +7,9 @@ namespace RetailMedia.Web.Middleware;
 
 public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddleware> logger)
 {
+    private static readonly JsonSerializerOptions JsonOptions =
+        new(JsonSerializerDefaults.Web);
+
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -15,12 +18,13 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
-            await WriteProblemDetailsAsync(context, ex);
+            logger.LogError(ex, "Unhandled exception on {Method} {Path}",
+                context.Request.Method, context.Request.Path);
+            await WriteProblemDetailsAsync(context);
         }
     }
 
-    private static async Task WriteProblemDetailsAsync(HttpContext context, Exception ex)
+    private static async Task WriteProblemDetailsAsync(HttpContext context)
     {
         context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
@@ -33,6 +37,6 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
             Instance = context.Request.Path
         };
 
-        await context.Response.WriteAsync(JsonSerializer.Serialize(problem));
+        await context.Response.WriteAsync(JsonSerializer.Serialize(problem, JsonOptions));
     }
 }

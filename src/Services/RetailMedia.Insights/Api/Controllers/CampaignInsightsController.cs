@@ -7,7 +7,7 @@ using RetailMedia.Web.Extensions;
 namespace RetailMedia.Insights.Api.Controllers;
 
 [ApiController]
-[Route("api/v1/campaigns")]
+[Route("api/v1/ad")]
 [Authorize]
 public sealed class CampaignInsightsController(IMediator mediator) : ControllerBase
 {

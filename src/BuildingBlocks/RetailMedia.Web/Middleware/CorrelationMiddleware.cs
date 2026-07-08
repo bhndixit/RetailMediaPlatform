@@ -7,6 +7,8 @@ public sealed class CorrelationMiddleware(RequestDelegate next)
 {
     private const string CorrelationHeader = "X-Correlation-Id";
 
+    public const string ContextItemKey = "CorrelationId";
+
     public async Task InvokeAsync(HttpContext context)
     {
         var correlationId = context.Request.Headers[CorrelationHeader].FirstOrDefault();
@@ -14,6 +16,9 @@ public sealed class CorrelationMiddleware(RequestDelegate next)
         if (!Guid.TryParse(correlationId, out var parsedId))
             parsedId = Guid.NewGuid();
 
+        // Store so downstream middleware (TenantMiddleware) can embed it into TenantContext
+        // rather than generating a second, unrelated GUID.
+        context.Items[ContextItemKey] = parsedId;
         context.Response.Headers[CorrelationHeader] = parsedId.ToString();
 
         using (LogContext.PushProperty("CorrelationId", parsedId))

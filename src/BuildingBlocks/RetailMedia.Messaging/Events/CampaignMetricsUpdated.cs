@@ -11,5 +11,6 @@ public sealed record CampaignMetricsUpdated(
     string CampaignId,
     long Clicks,
     long Impressions,
+    long Baskets,
     decimal ClickToBasketRatio
 ) : IIntegrationEvent;
