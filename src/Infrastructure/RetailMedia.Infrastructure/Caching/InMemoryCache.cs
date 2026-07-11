@@ -5,43 +5,26 @@ namespace RetailMedia.Infrastructure.Caching;
 
 internal sealed class InMemoryCache : ICacheProvider
 {
-    private readonly ConcurrentDictionary<string, CacheEntry> _store = new();
+    private readonly ConcurrentDictionary<string, long> _counters = new();
 
-    public Task InvalidateAsync(string key, CancellationToken cancellationToken = default)
+    public Task<bool> IsEmptyAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(_counters.IsEmpty);
+
+    public Task SeedCounterAsync(string key, long value, CancellationToken cancellationToken = default)
     {
-        _store.TryRemove(key, out _);
+        _counters.AddOrUpdate(key, value, (_, existing) => existing + value);
         return Task.CompletedTask;
     }
 
-    public async Task<T?> GetOrFetchAsync<T>(string key, Func<CancellationToken, Task<T?>> fetch, TimeSpan ttl, CancellationToken cancellationToken = default) where T : class
+    public Task IncrementAsync(string key, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var cached = GetFromStore<T>(key);
-            if (cached is not null)
-                return cached;
-        }
-        catch
-        {
-            // Cache unavailable — fall through to the fetch delegate (analytical store).
-        }
-
-        var value = await fetch(cancellationToken);
-        if (value is not null)
-            SetInStore(key, value, ttl);
-
-        return value;
+        _counters.AddOrUpdate(key, 1, (_, existing) => existing + 1);
+        return Task.CompletedTask;
     }
 
-    private T? GetFromStore<T>(string key) where T : class
+    public Task<long?> GetCounterAsync(string key, CancellationToken cancellationToken = default)
     {
-        if (_store.TryGetValue(key, out var entry) && entry.ExpiresAt > DateTime.UtcNow)
-            return (T?)entry.Value;
-        return null;
+        long? result = _counters.TryGetValue(key, out var value) ? value : null;
+        return Task.FromResult(result);
     }
-
-    private void SetInStore<T>(string key, T value, TimeSpan ttl) where T : class =>
-        _store[key] = new CacheEntry(value, DateTime.UtcNow.Add(ttl));
-
-    private sealed record CacheEntry(object Value, DateTime ExpiresAt);
 }

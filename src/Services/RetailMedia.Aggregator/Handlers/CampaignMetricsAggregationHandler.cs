@@ -19,31 +19,37 @@ public sealed class CampaignMetricsAggregationHandler(
             "Aggregating metrics for campaign {CampaignId} | EventType: {EventType} | Tenant: {TenantId}",
             @event.CampaignId, @event.NormalisedEventType, @event.TenantId);
 
-        var current = await analyticsStore.GetAsync(@event.TenantId, @event.CampaignId, cancellationToken)
-            ?? new CampaignMetricsSnapshot(@event.CampaignId, @event.TenantId, 0, 0, 0, 0m, DateTime.UtcNow);
-
-        var updated = @event.NormalisedEventType switch
+        var counterKey = @event.NormalisedEventType switch
         {
-            EventType.Click      => current with { Clicks = current.Clicks + 1, LastUpdated = DateTime.UtcNow },
-            EventType.Impression => current with { Impressions = current.Impressions + 1, LastUpdated = DateTime.UtcNow },
-            EventType.Basket     => current with { Baskets = current.Baskets + 1, LastUpdated = DateTime.UtcNow },
-            _ => LogAndReturnUnchanged(current, @event.NormalisedEventType, @event.CampaignId)
+            EventType.Click      => ClickKey(@event.TenantId, @event.CampaignId),
+            EventType.Impression => ImpressionKey(@event.TenantId, @event.CampaignId),
+            EventType.Basket     => BasketKey(@event.TenantId, @event.CampaignId),
+            _ => null
         };
 
-        // ClickToBasket = sessions with a basket event / sessions with a click event (true conversion ratio)
-        var clickToBasketRatio = updated.Clicks > 0
-            ? Math.Round((decimal)updated.Baskets / updated.Clicks, 4)
-            : 0m;
+        if (counterKey is null)
+        {
+            logger.LogWarning(
+                "Unrecognised event type '{EventType}' for campaign {CampaignId} — metrics unchanged.",
+                @event.NormalisedEventType, @event.CampaignId);
+            return;
+        }
 
-        updated = updated with { ClickToBasketRatio = clickToBasketRatio };
+        await cache.IncrementAsync(counterKey, cancellationToken);
 
-        await analyticsStore.SaveAsync(updated, cancellationToken);
+        var clicks      = await cache.GetCounterAsync(ClickKey(@event.TenantId, @event.CampaignId), cancellationToken) ?? 0;
+        var impressions = await cache.GetCounterAsync(ImpressionKey(@event.TenantId, @event.CampaignId), cancellationToken) ?? 0;
+        var baskets     = await cache.GetCounterAsync(BasketKey(@event.TenantId, @event.CampaignId), cancellationToken) ?? 0;
+        var ratio       = clicks > 0 ? Math.Round((decimal)baskets / clicks, 4) : 0m;
 
-        // Invalidate all cached metric views for this campaign so Insights serves fresh data.
-        // Ownership of cache invalidation sits here — the writer is responsible, not the reader.
-        await cache.InvalidateAsync($"campaign:{@event.TenantId}:{@event.CampaignId}:clicks", cancellationToken);
-        await cache.InvalidateAsync($"campaign:{@event.TenantId}:{@event.CampaignId}:impressions", cancellationToken);
-        await cache.InvalidateAsync($"campaign:{@event.TenantId}:{@event.CampaignId}:clickToBasket", cancellationToken);
+        await analyticsStore.SaveAsync(new CampaignMetricsSnapshot(
+            @event.CampaignId,
+            @event.TenantId,
+            clicks,
+            impressions,
+            baskets,
+            ratio,
+            DateTime.UtcNow), cancellationToken);
 
         await eventBus.PublishAsync(new CampaignMetricsUpdated(
             EventId: Guid.NewGuid(),
@@ -52,23 +58,23 @@ public sealed class CampaignMetricsAggregationHandler(
             OccurredAt: DateTime.UtcNow,
             Version: 1,
             CampaignId: @event.CampaignId,
-            Clicks: updated.Clicks,
-            Impressions: updated.Impressions,
-            Baskets: updated.Baskets,
-            ClickToBasketRatio: updated.ClickToBasketRatio
+            Clicks: clicks,
+            Impressions: impressions,
+            Baskets: baskets,
+            ClickToBasketRatio: ratio
         ), cancellationToken);
 
         logger.LogInformation(
             "Metrics updated for campaign {CampaignId}: Clicks={Clicks}, Impressions={Impressions}, Baskets={Baskets}",
-            updated.CampaignId, updated.Clicks, updated.Impressions, updated.Baskets);
+            @event.CampaignId, clicks, impressions, baskets);
     }
 
-    private CampaignMetricsSnapshot LogAndReturnUnchanged(
-        CampaignMetricsSnapshot current, string eventType, string campaignId)
-    {
-        logger.LogWarning(
-            "Unrecognised event type '{EventType}' for campaign {CampaignId} — metrics unchanged.",
-            eventType, campaignId);
-        return current;
-    }
+    internal static string ClickKey(string tenantId, string campaignId) =>
+        $"campaign:{tenantId}:{campaignId}:clicks";
+
+    internal static string ImpressionKey(string tenantId, string campaignId) =>
+        $"campaign:{tenantId}:{campaignId}:impressions";
+
+    internal static string BasketKey(string tenantId, string campaignId) =>
+        $"campaign:{tenantId}:{campaignId}:baskets";
 }

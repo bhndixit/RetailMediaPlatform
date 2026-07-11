@@ -29,6 +29,11 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
         context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
+        var correlationId = context.Items.TryGetValue(CorrelationMiddleware.ContextItemKey, out var raw)
+            && raw is Guid parsed
+                ? parsed.ToString()
+                : context.Response.Headers[CorrelationMiddleware.HeaderName].FirstOrDefault();
+
         var problem = new ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
@@ -36,6 +41,9 @@ public sealed class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionM
             Detail = "Please contact support if the issue persists.",
             Instance = context.Request.Path
         };
+
+        if (correlationId is not null)
+            problem.Extensions["correlationId"] = correlationId;
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(problem, JsonOptions));
     }

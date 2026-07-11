@@ -115,9 +115,9 @@ The console window shows the full processing chain:
 
 ```
 [INF] Publishing CustomerEventRecorded
-[INF] Processing event for campaign campaign-001
-[INF] Aggregating metrics | EventType: click | Tenant: tenant-alpha
-[INF] Metrics updated: Clicks=1, Impressions=0, Baskets=0
+[INF] Processing event {EventId} for campaign campaign-001
+[INF] Aggregating metrics for campaign campaign-001 | EventType: click | Tenant: tenant-alpha
+[INF] Metrics updated for campaign campaign-001: Clicks=1, Impressions=0, Baskets=0
 ```
 
 ---
@@ -241,9 +241,9 @@ Open these URLs directly in the browser while the Demo is running:
 |---|---|---|
 | `InMemoryEventBus` | Google Pub/Sub | `RetailMedia.Infrastructure` only |
 | `InMemoryCache` | Redis | `RetailMedia.Infrastructure` only |
-| `InMemoryAnalyticsStore` | BigQuery | `RetailMedia.Infrastructure` only |
+| `InMemoryAnalyticsStore` | BigQuery (append-only streaming insert + `campaign_snapshots_latest` view) | `RetailMedia.Infrastructure` only |
 | `ConfigurationTenantProvider` | Tenant Management Service | `RetailMedia.Infrastructure` only |
-| `DemoAuthHandler` | OAuth2 / OpenID Connect | `RetailMedia.Infrastructure` only |
+| `DemoAuthHandler` | OAuth2 / OpenID Connect (JWT bearer) | Service `Program.cs` startup files |
 
 No business logic changes are required when moving to production infrastructure.
 
@@ -257,5 +257,6 @@ No business logic changes are required when moving to production infrastructure.
 | CQRS | `Commands/` and `Queries/` are separate folders in every service; handlers never mix read and write |
 | Multi-tenancy | `TenantMiddleware` resolves tenant once per request; every handler receives it via `TenantContext` |
 | Event-driven | `Collector` publishes, `Processor` and `Aggregator` subscribe; no direct service-to-service references |
-| Observability | Every log line carries `TenantId` and `CorrelationId`; `/health/live` and `/health/ready` on every service |
-| Resilience interfaces | `IDeadLetterQueue`, `IRetryPolicy`, `ICacheProvider.GetOrFetchAsync` signal production resilience patterns |
+| Observability | Every log line carries `TenantId` and `CorrelationId`; `/health/live` and `/health/ready` on every service; unhandled 500 responses include `correlationId` in the problem body |
+| Resilience interfaces | `IDeadLetterQueue` and `IRetryPolicy` are defined as ports; production implementations (Pub/Sub Dead Letter Topic, Polly) will be wired in `RetailMedia.Infrastructure` without touching business logic |
+| Hybrid write model | Aggregator atomically increments Redis counters (`ICacheProvider.IncrementAsync`) and immediately appends a BigQuery snapshot on every event; crash recovery re-seeds counters from the latest BigQuery snapshot — no raw event replay needed |

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RetailMedia.Messaging.Abstractions;
@@ -7,7 +8,8 @@ namespace RetailMedia.Infrastructure.Messaging;
 
 internal sealed class InMemoryEventBus(IServiceProvider serviceProvider, ILogger<InMemoryEventBus> logger) : IEventBus
 {
-    private readonly ConcurrentDictionary<string, List<Type>> _subscriptions = new();
+    // ImmutableList gives copy-on-write semantics: Subscribe and PublishAsync never share mutable state.
+    private readonly ConcurrentDictionary<string, ImmutableList<Type>> _subscriptions = new();
 
     public async Task PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
         where TEvent : class
@@ -33,11 +35,7 @@ internal sealed class InMemoryEventBus(IServiceProvider serviceProvider, ILogger
         var eventName = typeof(TEvent).Name;
         _subscriptions.AddOrUpdate(
             eventName,
-            [typeof(THandler)],
-            (_, existing) =>
-            {
-                existing.Add(typeof(THandler));
-                return existing;
-            });
+            ImmutableList.Create(typeof(THandler)),
+            (_, existing) => existing.Add(typeof(THandler)));
     }
 }

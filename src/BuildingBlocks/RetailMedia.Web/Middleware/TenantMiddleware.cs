@@ -28,13 +28,11 @@ public sealed class TenantMiddleware(RequestDelegate next, ITenantProvider tenan
 
         if (tenant is null)
         {
-            await WriteProblemAsync(context, StatusCodes.Status401Unauthorized,
-                "Tenant Not Recognised", $"No active tenant found for identifier '{tenantId}'.");
+            await WriteProblemAsync(context, StatusCodes.Status403Forbidden,
+                "Tenant Not Permitted", $"No active tenant found for identifier '{tenantId}'.");
             return;
         }
 
-        // Use the correlation ID already established by CorrelationMiddleware so that
-        // every log line and integration event shares one traceable ID for the request.
         var correlationId = context.Items.TryGetValue(CorrelationMiddleware.ContextItemKey, out var raw)
             && raw is Guid parsed
                 ? parsed

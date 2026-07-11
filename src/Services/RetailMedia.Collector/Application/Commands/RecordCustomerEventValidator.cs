@@ -7,9 +7,9 @@ internal sealed class RecordCustomerEventValidator : AbstractValidator<RecordCus
 {
     public RecordCustomerEventValidator()
     {
-        RuleFor(x => x.TenantId).NotEmpty();
-        RuleFor(x => x.CampaignId).NotEmpty();
-        RuleFor(x => x.CustomerId).NotEmpty();
+        RuleFor(x => x.TenantId).NotEmpty().MaximumLength(128);
+        RuleFor(x => x.CampaignId).NotEmpty().MaximumLength(256);
+        RuleFor(x => x.CustomerId).NotEmpty().MaximumLength(256);
         RuleFor(x => x.EventType)
             .NotEmpty()
             .Must(t => EventType.All.Contains(t.ToLowerInvariant()))
